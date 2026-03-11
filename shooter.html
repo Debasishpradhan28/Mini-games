@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Space Shooter</title>
+    <style>
+        :root {
+            --bg-color: #05050a;
+            --panel-bg: #12121a;
+            --text-color: #ffffff;
+            --accent: #00f3ff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex; flex-direction: column; align-items: center;
+            height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; overflow: hidden;
+        }
+
+        /* --- Header & UI --- */
+        .header { text-align: center; margin-bottom: 15px; width: 100%; max-width: 800px; z-index: 10;}
+        h1 { margin: 0 0 10px 0; color: var(--accent); font-size: 2.2rem; text-shadow: 0 0 15px rgba(0, 243, 255, 0.5); text-transform: uppercase; letter-spacing: 2px;}
+
+        .top-bar {
+            display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 15px;
+            background: var(--panel-bg); padding: 10px 20px; border-radius: 12px;
+            border: 1px solid #333; box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+        }
+
+        select {
+            background: #2a2a3a; color: white; border: 1px solid var(--accent);
+            padding: 8px 12px; border-radius: 6px; outline: none; cursor: pointer; font-size: 0.9rem;
+        }
+
+        .stats { display: flex; gap: 20px; font-size: 1.2rem; font-weight: bold; }
+        .score-text { color: #2ed573; }
+        .high-score-text { color: #f1c40f; }
+
+        button.action-btn {
+            background: transparent; color: var(--accent); border: 2px solid var(--accent);
+            padding: 8px 20px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s;
+        }
+        button.action-btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 15px var(--accent); }
+
+        /* --- Canvas Area --- */
+        .canvas-container {
+            position: relative; flex-grow: 1; display: flex; justify-content: center; align-items: center; width: 100%;
+        }
+
+        canvas {
+            background-color: #000; border: 3px solid #333; border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8); width: 100%; max-width: 600px;
+            height: 100%; max-height: 800px; display: block;
+        }
+
+        .controls-hint { margin-top: 10px; color: #888; font-size: 0.9rem; text-align: center;}
+        .controls-hint span { color: var(--text-color); font-weight: bold; }
+
+        /* --- Overlays --- */
+        #gameOverOverlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 5, 10, 0.85); display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 20; border-radius: 12px;
+        }
+        .go-title { font-size: 3rem; color: #ff4757; margin-bottom: 10px; text-shadow: 0 0 20px rgba(255, 71, 87, 0.6); text-transform: uppercase;}
+        .go-score { font-size: 1.5rem; margin-bottom: 25px; color: #ccc;}
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Star Fighter</h1>
+        <div class="top-bar">
+            <select id="diffSel">
+                <option value="easy">Easy (Cadet)</option>
+                <option value="medium" selected>Medium (Pilot)</option>
+                <option value="hard">Hard (Ace)</option>
+                <option value="master">Master (Bullet Hell)</option>
+            </select>
+            <select id="themeSel">
+                <option value="deepSpace">Deep Space (Classic)</option>
+                <option value="neonNebula">Neon Nebula (Purple)</option>
+                <option value="cyberVoid">Cyber Void (Green)</option>
+            </select>
+            <div class="stats">
+                <div>Score: <span id="scoreDisplay" class="score-text">0</span></div>
+                <div>Best: <span id="highScoreDisplay" class="high-score-text">0</span></div>
+            </div>
+            <button class="action-btn" id="startBtn">Launch</button>
+        </div>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="gameCanvas" width="600" height="800"></canvas>
+        <div id="gameOverOverlay">
+            <div class="go-title">Ship Destroyed</div>
+            <div class="go-score">Final Score: <span id="finalScore">0</span></div>
+            <button class="action-btn" id="restartBtn" style="font-size: 1.2rem; padding: 12px 30px;">Play Again</button>
+        </div>
+    </div>
+    
+    <div class="controls-hint">Use <span>Left / Right Arrows</span> to move and <span>Spacebar</span> to shoot.</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const overlay = document.getElementById('gameOverOverlay');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const highScoreDisplay = document.getElementById('highScoreDisplay');
+
+        // Load High Score from Persistent Local Storage
+        let sessionHighScore = localStorage.getItem('starFighterHighScore') || 0;
+        highScoreDisplay.innerText = sessionHighScore;
+
+        // --- GAME CONFIGURATIONS ---
+        const difficulties = {
+            easy:   { enemySpeed: 2, spawnRate: 1500, fireRate: 15 },
+            medium: { enemySpeed: 3.5, spawnRate: 1000, fireRate: 12 },
+            hard:   { enemySpeed: 5, spawnRate: 600, fireRate: 10 },
+            master: { enemySpeed: 7, spawnRate: 300, fireRate: 8 }
+        };
+
+        const themes = {
+            deepSpace:  { bg: '#000000', stars: '#ffffff', ship: '#00f3ff', enemy: '#ff4757' },
+            neonNebula: { bg: '#1a0b2e', stars: '#f368e0', ship: '#feca57', enemy: '#1dd1a1' },
+            cyberVoid:  { bg: '#001100', stars: '#2ed573', ship: '#ffffff', enemy: '#ff9f43' }
+        };
+
+        // --- GAME STATE ---
+        let currentDiff = difficulties.medium;
+        let currentTheme = themes.deepSpace;
+        let isPlaying = false;
+        let score = 0;
+        let animationId;
+        let lastSpawnTime = 0;
+        let frameCount = 0;
+
+        let player;
+        let bullets = [];
+        let enemies = [];
+        let particles = [];
+        let stars = [];
+
+        // Input Tracking
+        const keys = { ArrowLeft: false, ArrowRight: false, ' ': false };
+
+        document.addEventListener('keydown', (e) => {
+            if(keys.hasOwnProperty(e.key)) { keys[e.key] = true; e.preventDefault(); }
+        });
+        document.addEventListener('keyup', (e) => {
+            if(keys.hasOwnProperty(e.key)) keys[e.key] = false;
+        });
+
+        // --- CLASSES ---
+        class Player {
+            constructor() {
+                this.width = 40; this.height = 40;
+                this.x = canvas.width / 2 - this.width / 2;
+                this.y = canvas.height - 80;
+                this.speed = 6;
+                this.color = currentTheme.ship;
+                this.cooldown = 0;
+            }
+            update() {
+                if (keys.ArrowLeft && this.x > 0) this.x -= this.speed;
+                if (keys.ArrowRight && this.x + this.width < canvas.width) this.x += this.speed;
+                
+                // Handling Shooting
+                if (keys[' '] && this.cooldown <= 0) {
+                    bullets.push(new Bullet(this.x + this.width/2 - 2, this.y));
+                    this.cooldown = currentDiff.fireRate; // Use difficulty to limit fire rate
+                }
+                if (this.cooldown > 0) this.cooldown--;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                // Draw a simple triangle ship
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.width/2, this.y);
+                ctx.lineTo(this.x + this.width, this.y + this.height);
+                ctx.lineTo(this.x, this.y + this.height);
+                ctx.fill();
+                
+                // Engine glow
+                ctx.shadowBlur = 10; ctx.shadowColor = this.color;
+                ctx.fillRect(this.x + 10, this.y + this.height, 20, 10);
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Bullet {
+            constructor(x, y) {
+                this.x = x; this.y = y;
+                this.width = 4; this.height = 15;
+                this.speed = 10;
+                this.color = '#f1c40f';
+                this.markedForDeletion = false;
+            }
+            update() {
+                this.y -= this.speed;
+                if (this.y < 0) this.markedForDeletion = true;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10; ctx.shadowColor = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Enemy {
+            constructor() {
+                this.width = 35; this.height = 35;
+                this.x = Math.random() * (canvas.width - this.width);
+                this.y = -50;
+                // Add slight randomization to speed
+                this.speed = currentDiff.enemySpeed + (Math.random() * 2 - 1); 
+                this.color = currentTheme.enemy;
+                this.markedForDeletion = false;
+            }
+            update() {
+                this.y += this.speed;
+                if (this.y > canvas.height) this.markedForDeletion = true;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 15; ctx.shadowColor = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y;
+                this.size = Math.random() * 4 + 2;
+                this.speedX = Math.random() * 6 - 3;
+                this.speedY = Math.random() * 6 - 3;
+                this.color = color;
+                this.life = 1.0; // Fades out over time
+                this.markedForDeletion = false;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.life -= 0.05;
+                if (this.life <= 0) this.markedForDeletion = true;
+            }
+            draw() {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+                ctx.globalAlpha = 1.0; // Reset alpha
+            }
+        }
+
+        // --- BACKGROUND GENERATION ---
+        function initStars() {
+            stars = [];
+            for(let i=0; i<100; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2,
+                    speed: Math.random() * 3 + 0.5
+                });
+            }
+        }
+
+        function drawBackground() {
+            ctx.fillStyle = currentTheme.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = currentTheme.stars;
+            stars.forEach(star => {
+                star.y += star.speed;
+                if (star.y > canvas.height) { star.y = 0; star.x = Math.random() * canvas.width; }
+                ctx.fillRect(star.x, star.y, star.size, star.size);
+            });
+        }
+
+        // --- CORE LOGIC ---
+        function checkCollision(rect1, rect2) {
+            // Axis-Aligned Bounding Box (AABB) Collision Math
+            return (
+                rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y
+            );
+        }
+
+        function createExplosion(x, y, color) {
+            for(let i=0; i<15; i++) {
+                particles.push(new Particle(x + 15, y + 15, color));
+            }
+        }
+
+        function spawnEnemies(timestamp) {
+            if (timestamp - lastSpawnTime > currentDiff.spawnRate) {
+                enemies.push(new Enemy());
+                lastSpawnTime = timestamp;
+            }
+        }
+
+        function initGame() {
+            currentDiff = difficulties[document.getElementById('diffSel').value];
+            currentTheme = themes[document.getElementById('themeSel').value];
+            
+            player = new Player();
+            bullets = []; enemies = []; particles = [];
+            score = 0; scoreDisplay.innerText = score;
+            frameCount = 0;
+            
+            initStars();
+            overlay.style.display = 'none';
+            isPlaying = true;
+            
+            startBtn.innerText = "Restart";
+            cancelAnimationFrame(animationId);
+            gameLoop(0);
+        }
+
+        function gameOver() {
+            isPlaying = false;
+            cancelAnimationFrame(animationId);
+            
+            // Handle High Score persistence
+            if (score > sessionHighScore) {
+                sessionHighScore = score;
+                localStorage.setItem('starFighterHighScore', sessionHighScore);
+                highScoreDisplay.innerText = sessionHighScore;
+            }
+
+            document.getElementById('finalScore').innerText = score;
+            overlay.style.display = 'flex';
+        }
+
+        function gameLoop(timestamp) {
+            if (!isPlaying) return;
+            drawBackground();
+
+            player.update();
+            player.draw();
+
+            // Update & Draw Bullets
+            bullets.forEach(bullet => {
+                bullet.update();
+                bullet.draw();
+            });
+
+            // Update & Draw Particles
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+
+            spawnEnemies(timestamp);
+
+            // Update & Draw Enemies, Check Collisions
+            enemies.forEach(enemy => {
+                enemy.update();
+                enemy.draw();
+
+                // 1. Check if Enemy hits Player
+                if (checkCollision(player, enemy)) {
+                    createExplosion(player.x, player.y, player.color);
+                    gameOver();
+                }
+
+                // 2. Check if Bullet hits Enemy
+                bullets.forEach(bullet => {
+                    if (!bullet.markedForDeletion && checkCollision(bullet, enemy)) {
+                        bullet.markedForDeletion = true;
+                        enemy.markedForDeletion = true;
+                        createExplosion(enemy.x, enemy.y, enemy.color);
+                        score += 10;
+                        scoreDisplay.innerText = score;
+                    }
+                });
+            });
+
+            // Cleanup arrays (remove items marked for deletion)
+            bullets = bullets.filter(b => !b.markedForDeletion);
+            enemies = enemies.filter(e => !e.markedForDeletion);
+            particles = particles.filter(p => !p.markedForDeletion);
+
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // --- EVENT LISTENERS ---
+        startBtn.addEventListener('click', initGame);
+        restartBtn.addEventListener('click', initGame);
+
+        // Render idle background on load
+        currentTheme = themes.deepSpace;
+        initStars();
+        drawBackground();
+    </script>
+</body>
+</html>

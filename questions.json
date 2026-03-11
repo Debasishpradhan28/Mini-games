@@ -1,0 +1,22 @@
+{
+  "career": [
+    { "a": "Work a high-stress job making $500k/year", "b": "Work a zero-stress job making $60k/year", "pa": 42 },
+    { "a": "Be the absolute best in the world at a useless skill", "b": "Be perfectly average at every single useful skill", "pa": 28 },
+    { "a": "Have a guaranteed government job with low stress", "b": "Launch a startup with a 50% chance of making millions", "pa": 65 }
+  ],
+  "scifi": [
+    { "a": "Time travel 100 years into the past", "b": "Time travel 100 years into the future", "pa": 35 },
+    { "a": "Find out that aliens are real and friendly", "b": "Find out that magic is real and you can learn it", "pa": 29 },
+    { "a": "Have a button that pauses time", "b": "Have a button that rewinds time by exactly 5 minutes", "pa": 62 }
+  ],
+  "chaos": [
+    { "a": "Have fingers as long as your legs", "b": "Have legs as short as your fingers", "pa": 15 },
+    { "a": "Every time you sneeze, you randomly teleport 10 feet", "b": "Every time you cough, a random person gets $5", "pa": 82 },
+    { "a": "Fight one horse-sized duck", "b": "Fight 100 duck-sized horses", "pa": 68 }
+  ],
+  "deep": [
+    { "a": "Know exactly WHEN you are going to die", "b": "Know exactly HOW you are going to die", "pa": 60 },
+    { "a": "Be remembered as a hero but die young", "b": "Live a long, happy life but be completely forgotten", "pa": 22 },
+    { "a": "Have the ability to read everyone's mind (cannot turn it off)", "b": "Never be able to tell a lie again", "pa": 30 }
+  ]
+}

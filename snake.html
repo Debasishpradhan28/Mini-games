@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake: Ultimate Edition</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { margin: 0 0 10px 0; color: #4facfe; }
+        
+        .scoreboard {
+            display: flex;
+            gap: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            justify-content: center;
+        }
+
+        .score-box { background: #2a2a2a; padding: 10px 15px; border-radius: 8px; }
+        #highScore { color: #f9ca24; }
+        #bigFoodScore { color: #ff7e5f; }
+
+        /* Settings Panel Layout */
+        .game-layout {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .settings-panel {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 200px;
+        }
+
+        .setting-group { display: flex; flex-direction: column; gap: 5px; }
+        .setting-group label { font-size: 0.9rem; color: #aaa; }
+        
+        select {
+            padding: 8px;
+            background: #2a2a2a;
+            color: white;
+            border: 1px solid #444;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+
+        canvas {
+            background-color: #1e1e1e;
+            border: 3px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .controls { margin-top: 15px; text-align: center; }
+
+        button {
+            padding: 12px 24px;
+            font-size: 1rem;
+            background-color: #ff7e5f;
+            color: #121212;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+
+        button:hover { background-color: #feb47b; }
+        button:active { transform: scale(0.95); }
+        
+        #gameOverText {
+            color: #ff4757;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            height: 30px;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Snake Ultimate</h1>
+        <div class="scoreboard">
+            <div class="score-box">Score: <span id="score">0</span></div>
+            <div class="score-box">High Score: <span id="highScore">0</span></div>
+            <div class="score-box" id="bigFoodScoreDisplay" style="visibility: hidden;">
+                Big Food: <span id="bigFoodScore">50</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="gameOverText"></div>
+
+    <div class="game-layout">
+        <div class="settings-panel">
+            <div class="setting-group">
+                <label>Speed</label>
+                <select id="speedSel">
+                    <option value="150">Easy</option>
+                    <option value="100" selected>Medium</option>
+                    <option value="70">Hard</option>
+                    <option value="50">Pro</option>
+                    <option value="35">Master</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label>Wall Type</label>
+                <select id="wallSel">
+                    <option value="killer">Killer Walls</option>
+                    <option value="transparent">Transparent (Wrap)</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label>Environment</label>
+                <select id="themeSel">
+                    <option value="classic">Classic</option>
+                    <option value="retro">Retro</option>
+                    <option value="space">Space</option>
+                    <option value="brick">Brick</option>
+                    <option value="jungle">Jungle</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label>Obstacles</label>
+                <select id="obsSel">
+                    <option value="0">Easy (None)</option>
+                    <option value="5">Medium</option>
+                    <option value="15">Hard</option>
+                    <option value="25">Pro</option>
+                    <option value="40">Master</option>
+                </select>
+            </div>
+            <div class="controls">
+                <button id="restartBtn">Play Game</button>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreElement = document.getElementById("score");
+        const highScoreElement = document.getElementById("highScore");
+        const gameOverText = document.getElementById("gameOverText");
+        
+        // Theme Definitions
+        const themes = {
+            classic: { bg: "#1e1e1e", head: "#4facfe", body: "#00f2fe", food: "#ff4757", obs: "#7f8fa6", grid: "#333" },
+            retro:   { bg: "#9bbc0f", head: "#0f380f", body: "#306230", food: "#0f380f", obs: "#0f380f", grid: "#000" },
+            space:   { bg: "#0b0c10", head: "#e056fd", body: "#be2edd", food: "#f9ca24", obs: "#45a29e", grid: "#1f2833" },
+            brick:   { bg: "#bdc3c7", head: "#2c3e50", body: "#34495e", food: "#e74c3c", obs: "#c0392b", grid: "#7f8c8d" },
+            jungle:  { bg: "#27ae60", head: "#f1c40f", body: "#f39c12", food: "#e67e22", obs: "#8e44ad", grid: "#2ecc71" }
+        };
+
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+        
+        let snake = [];
+        let obstacles = [];
+        let dx = 0, dy = 0;
+        let score = 0;
+        let sessionHighScore = 0; // Tracks highest score for the session
+        let isRunning = false;
+        let gameLoopTimeout;
+        
+        // Settings State
+        let currentTheme = themes.classic;
+        let currentSpeed = 100;
+        let wallType = 'killer';
+        let obstacleCount = 0;
+
+        // Food Variables
+        let foodX, foodY;
+        let bigFoodX, bigFoodY;
+        let bigFoodActive = false;
+        let bigFoodSpawnTime = 0;
+        let bigFoodTimer, bigFoodSpawner;
+
+        document.addEventListener("keydown", changeDirection);
+        document.getElementById("restartBtn").addEventListener("click", resetGame);
+
+        function resetGame() {
+            // Read settings from UI
+            currentSpeed = parseInt(document.getElementById("speedSel").value);
+            wallType = document.getElementById("wallSel").value;
+            currentTheme = themes[document.getElementById("themeSel").value];
+            obstacleCount = parseInt(document.getElementById("obsSel").value);
+            
+            // Apply canvas border based on theme
+            canvas.style.borderColor = currentTheme.grid;
+
+            snake = [
+                {x: 10, y: 10}, {x: 9, y: 10}, {x: 8, y: 10}
+            ];
+            dx = 1; dy = 0;
+            score = 0;
+            scoreElement.textContent = score;
+            gameOverText.textContent = "";
+            isRunning = true;
+            
+            bigFoodActive = false;
+            document.getElementById("bigFoodScoreDisplay").style.visibility = "hidden";
+            clearInterval(bigFoodSpawner);
+            clearTimeout(bigFoodTimer);
+
+            generateObstacles();
+            spawnFood();
+            startBigFoodCycle();
+            
+            clearTimeout(gameLoopTimeout);
+            drawGame();
+            
+            // Blur the button so hitting spacebar doesn't click it again
+            document.getElementById("restartBtn").blur(); 
+        }
+
+        function drawGame() {
+            if (!isRunning) return;
+            moveSnake();
+
+            if (checkGameOver()) {
+                isRunning = false;
+                gameOverText.textContent = "GAME OVER!";
+                if (score > sessionHighScore) {
+                    sessionHighScore = score;
+                    highScoreElement.textContent = sessionHighScore;
+                }
+                clearInterval(bigFoodSpawner);
+                clearTimeout(bigFoodTimer);
+                return;
+            }
+
+            clearScreen();
+            drawObstacles();
+            drawFood();
+            
+            if (bigFoodActive) updateAndDrawBigFood();
+            
+            drawSnake();
+            gameLoopTimeout = setTimeout(drawGame, currentSpeed);
+        }
+
+        function clearScreen() {
+            ctx.fillStyle = currentTheme.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function generateObstacles() {
+            obstacles = [];
+            let attempts = 0;
+            while(obstacles.length < obstacleCount && attempts < 100) {
+                let ox = Math.floor(Math.random() * tileCount);
+                let oy = Math.floor(Math.random() * tileCount);
+                
+                // Keep center clear for snake spawn (x: 8 to 12, y: 10)
+                let nearCenter = (ox >= 6 && ox <= 14 && oy >= 8 && oy <= 12);
+                let duplicate = obstacles.some(ob => ob.x === ox && ob.y === oy);
+                
+                if(!nearCenter && !duplicate) {
+                    obstacles.push({x: ox, y: oy});
+                }
+                attempts++;
+            }
+        }
+
+        function drawObstacles() {
+            ctx.fillStyle = currentTheme.obs;
+            obstacles.forEach(ob => {
+                // Add a small inner border effect for obstacles
+                ctx.fillRect(ob.x * gridSize + 1, ob.y * gridSize + 1, gridSize - 2, gridSize - 2);
+            });
+        }
+
+        function drawSnake() {
+            snake.forEach((part, index) => {
+                ctx.fillStyle = index === 0 ? currentTheme.head : currentTheme.body;
+                ctx.strokeStyle = currentTheme.bg;
+                ctx.fillRect(part.x * gridSize, part.y * gridSize, gridSize, gridSize);
+                ctx.strokeRect(part.x * gridSize, part.y * gridSize, gridSize, gridSize);
+            });
+        }
+
+        function moveSnake() {
+            let headX = snake[0].x + dx;
+            let headY = snake[0].y + dy;
+
+            // Apply Wall Logic
+            if (wallType === 'transparent') {
+                if (headX < 0) headX = tileCount - 1;
+                else if (headX >= tileCount) headX = 0;
+                
+                if (headY < 0) headY = tileCount - 1;
+                else if (headY >= tileCount) headY = 0;
+            }
+
+            const head = { x: headX, y: headY };
+            snake.unshift(head);
+
+            if (head.x === foodX && head.y === foodY) {
+                score += 10;
+                scoreElement.textContent = score;
+                spawnFood();
+            } 
+            else if (bigFoodActive && head.x === bigFoodX && head.y === bigFoodY) {
+                score += calculateBigFoodScore();
+                scoreElement.textContent = score;
+                bigFoodActive = false;
+                document.getElementById("bigFoodScoreDisplay").style.visibility = "hidden";
+                clearTimeout(bigFoodTimer);
+            } 
+            else {
+                snake.pop(); 
+            }
+        }
+
+        // Helper to ensure things don't spawn on top of each other
+        function isPositionSafe(x, y) {
+            let onSnake = snake.some(part => part.x === x && part.y === y);
+            let onObstacle = obstacles.some(ob => ob.x === x && ob.y === y);
+            return !onSnake && !onObstacle;
+        }
+
+        function spawnFood() {
+            let valid = false;
+            while (!valid) {
+                foodX = Math.floor(Math.random() * tileCount);
+                foodY = Math.floor(Math.random() * tileCount);
+                valid = isPositionSafe(foodX, foodY);
+            }
+        }
+
+        function drawFood() {
+            ctx.fillStyle = currentTheme.food;
+            ctx.beginPath();
+            ctx.arc(foodX * gridSize + gridSize/2, foodY * gridSize + gridSize/2, gridSize/2.5, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+
+        function startBigFoodCycle() {
+            bigFoodSpawner = setInterval(() => {
+                if (isRunning && !bigFoodActive) spawnBigFood();
+            }, 7000);
+        }
+
+        function spawnBigFood() {
+            let valid = false;
+            while (!valid) {
+                bigFoodX = Math.floor(Math.random() * tileCount);
+                bigFoodY = Math.floor(Math.random() * tileCount);
+                valid = isPositionSafe(bigFoodX, bigFoodY) && (bigFoodX !== foodX || bigFoodY !== foodY);
+            }
+
+            bigFoodActive = true;
+            bigFoodSpawnTime = Date.now();
+            document.getElementById("bigFoodScoreDisplay").style.visibility = "visible";
+
+            bigFoodTimer = setTimeout(() => {
+                bigFoodActive = false;
+                document.getElementById("bigFoodScoreDisplay").style.visibility = "hidden";
+            }, 5000);
+        }
+
+        function calculateBigFoodScore() {
+            const timeRatio = (Date.now() - bigFoodSpawnTime) / 5000; 
+            return Math.max(10, Math.floor(50 - (40 * timeRatio)));
+        }
+
+        function updateAndDrawBigFood() {
+            let currentVal = calculateBigFoodScore();
+            document.getElementById("bigFoodScore").textContent = currentVal;
+
+            ctx.fillStyle = "#ff7e5f"; 
+            let pad = (50 - currentVal) / 10; 
+            ctx.fillRect((bigFoodX * gridSize) + pad, (bigFoodY * gridSize) + pad, gridSize - (pad*2), gridSize - (pad*2));
+        }
+
+        function checkGameOver() {
+            let head = snake[0];
+
+            // Killer Wall Collision
+            if (wallType === 'killer') {
+                if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) return true;
+            }
+
+            // Obstacle Collision
+            if (obstacles.some(ob => ob.x === head.x && ob.y === head.y)) return true;
+
+            // Self Collision
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) return true;
+            }
+            
+            return false;
+        }
+
+        function changeDirection(event) {
+            const keys = { 37: [-1, 0], 38: [0, -1], 39: [1, 0], 40: [0, 1] };
+            if (keys[event.keyCode]) {
+                const [newDx, newDy] = keys[event.keyCode];
+                // Prevent 180-degree turns
+                if (dx === -newDx && dy === -newDy && snake.length > 1) return;
+                
+                dx = newDx; dy = newDy;
+                event.preventDefault(); // Stop arrow keys from scrolling the page
+            }
+        }
+    </script>
+</body>
+</html>

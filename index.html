@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Game Portal</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f0f13;
+            color: #ffffff;
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        header { 
+            text-align: center; 
+            margin-bottom: 50px; 
+        }
+
+        header h1 {
+            font-size: 3rem;
+            margin: 0;
+            background: linear-gradient(to right, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p { color: #888; font-size: 1.2rem; margin-top: 10px; }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .game-card {
+            background: #1c1c24;
+            border-radius: 16px;
+            padding: 25px;
+            text-decoration: none;
+            color: inherit;
+            border: 1px solid #2d2d3a;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .game-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+            border-color: #4facfe;
+        }
+
+        .card-visual {
+            height: 160px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+            color: rgba(255,255,255,0.8);
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        /* Unique Gradients for each game */
+        .tic-tac-toe-bg { background: linear-gradient(135deg, #ff7e5f, #feb47b); }
+        .snake-bg { background: linear-gradient(135deg, #11998e, #38ef7d); }
+        .memory-bg { background: linear-gradient(135deg, #a29bfe, #6c5ce7); }
+
+        .game-card h2 { margin: 0 0 10px 0; font-size: 1.5rem; }
+        .game-card p { margin: 0; color: #aaa; line-height: 1.5; flex-grow: 1; }
+
+        .tag-container {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .tag {
+            background: #2d2d3a;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Web Arcade</h1>
+        <p>A collection of vanilla JavaScript mini-games.</p>
+    </header>
+
+    <main class="game-grid">
+        <a href="tictactoe.html" class="game-card">
+            <div class="card-visual tic-tac-toe-bg">X / O</div>
+            <h2>Tic Tac Toe</h2>
+            <p>The classic strategy game. Features dynamic win checking and a built-in confetti celebration engine.</p>
+            <div class="tag-container">
+                <span class="tag">Logic</span>
+                <span class="tag">2-Player</span>
+            </div>
+        </a>
+
+        <a href="snake.html" class="game-card">
+            <div class="card-visual snake-bg">🐍</div>
+            <h2>Snake Ultimate</h2>
+            <p>A high-speed canvas game featuring dynamic obstacles, transparent walls, custom themes, and decaying Big Food scores.</p>
+            <div class="tag-container">
+                <span class="tag">Canvas API</span>
+                <span class="tag">Action</span>
+            </div>
+        </a>
+
+        <a href="memory.html" class="game-card">
+            <div class="card-visual memory-bg">🧠</div>
+            <h2>Pattern Memory</h2>
+            <p>Test your visual recall. Memorize the highlighted tiles before they disappear. Features dynamic grid generation up to 6x6.</p>
+            <div class="tag-container">
+                <span class="tag">State Management</span>
+                <span class="tag">Puzzle</span>
+            </div>
+        </a>
+        <a href="sudoku.html" class="game-card">
+            <div class="card-visual" style="background: linear-gradient(135deg, #0984e3, #00cec9);">🔢</div>
+            <h2>Sudoku Master</h2>
+            <p>A dynamically generated numbers puzzle. Features 5 difficulties, dynamic error tracking, hints, and a countdown timer.</p>
+            <div class="tag-container">
+                <span class="tag">Math/Logic</span>
+                <span class="tag">Backtracking Algorithm</span>
+            </div>
+        </a>
+        <a href="math.html" class="game-card">
+            <div class="card-visual" style="background: linear-gradient(135deg, #ff4757, #ff6b81);">⏱️ 42</div>
+            <h2>Quick Math Sprint</h2>
+            <p>Race against the clock in this 60-second arithmetic challenge. Features dynamic equation generation, time penalties, and mixed-operation Master modes.</p>
+            <div class="tag-container">
+                <span class="tag">Reflexes</span>
+                <span class="tag">Algorithms</span>
+            </div>
+        </a>
+        <a href="logic.html" class="game-card">
+            <div class="card-visual" style="background: linear-gradient(135deg, #22223b, #4a4e69); border: 2px solid #00f3ff; color: #00f3ff;">ALU</div>
+            <h2>Logic Gate Circuit</h2>
+            <p>A digital logic simulator. Route Boolean values (1s and 0s) through interactive AND, OR, and XOR gates to power the final output. Features procedural puzzle generation.</p>
+            <div class="tag-container">
+                <span class="tag">Computer Science</span>
+                <span class="tag">Boolean Logic</span>
+            </div>
+        </a>
+        <a href="match.html" class="game-card">
+            <div class="card-visual" style="background: linear-gradient(135deg, #a29bfe, #ff9ff3); color: #fff;">🃏</div>
+            <h2>Classic Card Match</h2>
+            <p>Test your working memory. Flip pairs of cards to find matching emojis. Scales from a casual 4x4 grid up to an intense 8x8 Master challenge.</p>
+            <div class="tag-container">
+                <span class="tag">Memory</span>
+                <span class="tag">CSS 3D Transforms</span>
+            </div>
+        </a>
+        <a href="rather.html" class="game-card">
+            <div class="card-visual" style="background: linear-gradient(135deg, #ff7675 50%, #74b9ff 50%); border: 3px solid #333;">🤔</div>
+            <h2>Would You Rather?</h2>
+            <p>A purely social interactive deck. Make tough choices across different life modes like Career, Sci-Fi, and Chaos, and see how your decisions compare to global statistics.</p>
+            <div class="tag-container">
+                <span class="tag">Interactive UI</span>
+                <span class="tag">JSON Data</span>
+            </div>
+        </a>
+        <a href="shooter.html" class="game-card">
+            <div class="card-visual" style="background: #000; border: 2px solid #00f3ff; color: #00f3ff; text-shadow: 0 0 10px #00f3ff; overflow: hidden; position: relative;">
+                <div style="font-size: 4rem;">🚀</div>
+            </div>
+            <h2>Star Fighter</h2>
+            <p>An action-packed arcade shooter. Dodge and destroy waves of enemies. Features a persistent high-score system, dynamic particle physics, and responsive difficulty scaling.</p>
+            <div class="tag-container">
+                <span class="tag">Physics Engine</span>
+                <span class="tag">Canvas Game Loop</span>
+            </div>
+        </a>
+    </main>
+</body>
+</html>

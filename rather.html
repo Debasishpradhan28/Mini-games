@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Would You Rather?</title>
+    <style>
+        :root {
+            --bg-color: #0f0f13;
+            --panel-bg: #1e1e24;
+            --text-color: #ffffff;
+            --accent: #00cec9;
+            --opt-a-color: #ff7675;
+            --opt-b-color: #74b9ff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* --- Header & Controls --- */
+        .header { text-align: center; margin-bottom: 30px; width: 100%; max-width: 800px; }
+        h1 { margin: 0 0 10px 0; font-size: 2.5rem; text-transform: uppercase; letter-spacing: 2px; background: linear-gradient(to right, var(--opt-a-color), var(--opt-b-color)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .controls {
+            display: flex; justify-content: center; gap: 15px;
+            background: var(--panel-bg); padding: 15px 25px; border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+        }
+
+        select {
+            background: #2a2a3a; color: white; border: 1px solid #444;
+            padding: 10px 15px; border-radius: 8px; font-size: 1rem;
+            outline: none; cursor: pointer; width: 250px; text-align: center;
+        }
+
+        .stats-counter { font-size: 1.1rem; color: #aaa; align-self: center; font-weight: bold; }
+
+        /* --- Game Arena --- */
+        .arena {
+            display: flex; flex-direction: column; align-items: center;
+            width: 100%; max-width: 900px; flex-grow: 1; justify-content: center; gap: 20px;
+        }
+
+        .wyr-title { font-size: 2rem; font-weight: bold; color: var(--accent); margin-bottom: 10px; text-align: center;}
+
+        .cards-container {
+            display: flex; gap: 20px; width: 100%; height: 350px;
+        }
+
+        /* --- The Choice Cards --- */
+        .choice-card {
+            flex: 1; background: var(--panel-bg); border-radius: 20px;
+            border: 3px solid #333; cursor: pointer; position: relative;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 30px; text-align: center; font-size: 1.8rem; font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+            overflow: hidden;
+        }
+
+        .choice-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        
+        #cardA:hover { border-color: var(--opt-a-color); }
+        #cardB:hover { border-color: var(--opt-b-color); }
+
+        .card-text { z-index: 2; line-height: 1.4; transition: opacity 0.3s; }
+        
+        .or-divider {
+            display: flex; justify-content: center; align-items: center;
+            width: 60px; height: 60px; background: var(--bg-color); border: 3px solid #444;
+            border-radius: 50%; font-size: 1.2rem; font-weight: bold; color: #888;
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5;
+        }
+
+        /* --- Results State (Percentage Fill) --- */
+        .result-fill {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 0%;
+            z-index: 1; transition: height 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex; justify-content: center; align-items: flex-start; padding-top: 20px;
+        }
+        
+        #fillA { background: linear-gradient(to top, rgba(255, 118, 117, 0.8), rgba(255, 118, 117, 0.2)); }
+        #fillB { background: linear-gradient(to top, rgba(116, 185, 255, 0.8), rgba(116, 185, 255, 0.2)); }
+
+        .percent-text {
+            font-size: 4rem; font-weight: bold; opacity: 0; transform: translateY(20px);
+            transition: all 0.5s ease 0.5s; text-shadow: 0 5px 15px rgba(0,0,0,0.8);
+        }
+
+        .choice-card.revealed { cursor: default; transform: none; box-shadow: none; border-color: #444; }
+        .choice-card.revealed .percent-text { opacity: 1; transform: translateY(0); }
+        .choice-card.revealed.selected { border-color: var(--text-color); box-shadow: 0 0 20px rgba(255,255,255,0.2); }
+        .choice-card.revealed:not(.selected) .card-text { opacity: 0.4; }
+
+        /* --- Next Button --- */
+        .next-btn {
+            background: linear-gradient(135deg, var(--accent), #0984e3);
+            color: #fff; border: none; padding: 15px 40px; font-size: 1.2rem; font-weight: bold;
+            border-radius: 30px; cursor: pointer; transition: 0.3s;
+            opacity: 0; pointer-events: none; transform: translateY(20px); margin-top: 20px;
+        }
+        .next-btn.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+        .next-btn:hover { box-shadow: 0 5px 20px rgba(0, 206, 201, 0.5); transform: translateY(-3px); }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .cards-container { flex-direction: column; height: auto; gap: 15px;}
+            .choice-card { padding: 40px 20px; min-height: 200px; font-size: 1.4rem; }
+            .or-divider { position: static; transform: none; margin: -25px auto; z-index: 5; background: #333;}
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Would You Rather</h1>
+        <div class="controls">
+            <select id="genreSel">
+                <option value="career">💼 Career & Ambition</option>
+                <option value="scifi">🛸 Sci-Fi & Fantasy</option>
+                <option value="chaos">🌪️ Chaos & Absurdity</option>
+                <option value="deep">🧠 Deep & Philosophical</option>
+            </select>
+            <div class="stats-counter">Answered: <span id="answerCount">0</span></div>
+        </div>
+    </div>
+
+    <div class="arena">
+        <div class="wyr-title">Would you rather...</div>
+        
+        <div class="cards-container">
+            <div class="choice-card" id="cardA" onclick="makeChoice('A')">
+                <div class="card-text" id="textA">Loading...</div>
+                <div class="result-fill" id="fillA"><div class="percent-text" id="percentA">0%</div></div>
+            </div>
+
+            <div class="or-divider">OR</div>
+
+            <div class="choice-card" id="cardB" onclick="makeChoice('B')">
+                <div class="card-text" id="textB">Loading...</div>
+                <div class="result-fill" id="fillB"><div class="percent-text" id="percentB">0%</div></div>
+            </div>
+        </div>
+
+        <button class="next-btn" id="nextBtn" onclick="loadQuestion()">Next Question ➔</button>
+    </div>
+
+    <script>
+        // The Question Database
+        // 'a' = Option A text, 'b' = Option B text, 'pa' = Fake % of people who chose A (B is auto-calculated)
+        const db = {
+            career: [
+                { a: "Work a high-stress job making $500k/year", b: "Work a zero-stress job making $60k/year", pa: 42 },
+                { a: "Be the absolute best in the world at a useless skill", b: "Be perfectly average at every single useful skill", pa: 28 },
+                { a: "Have a guaranteed high-level government job (low stress, great benefits)", b: "Launch a startup with a 50% chance of making millions and 50% chance of bankruptcy", pa: 65 },
+                { a: "Work 4 days a week for 10 hours a day", b: "Work 5 days a week for 8 hours a day", pa: 85 }
+            ],
+            scifi: [
+                { a: "Time travel 100 years into the past", b: "Time travel 100 years into the future", pa: 35 },
+                { a: "Find out that aliens are real and friendly", b: "Find out that magic is real and you can learn it", pa: 71 },
+                { a: "Have a button that pauses time", b: "Have a button that rewinds time by 5 minutes", pa: 55 },
+                { a: "Be able to teleport anywhere, but only naked", b: "Be able to fly, but only at 5 mph", pa: 48 }
+            ],
+            chaos: [
+                { a: "Have fingers as long as your legs", b: "Have legs as short as your fingers", pa: 15 },
+                { a: "Every time you sneeze, you randomly teleport 10 feet", b: "Every time you cough, a random person in the world gets $5", pa: 82 },
+                { a: "Fight one horse-sized duck", b: "Fight 100 duck-sized horses", pa: 68 },
+                { a: "Have tastebuds on your hands", b: "Have teeth in your ears", pa: 22 }
+            ],
+            deep: [
+                { a: "Know exactly WHEN you are going to die", b: "Know exactly HOW you are going to die", pa: 60 },
+                { a: "Be remembered as a hero but die young", b: "Live a long, happy life but be completely forgotten", pa: 78 },
+                { a: "Have the ability to read everyone's mind all the time (cannot turn it off)", b: "Never be able to lie again", pa: 30 },
+                { a: "Experience the beginning of the universe", b: "Experience the end of the universe", pa: 52 }
+            ]
+        };
+
+        let currentGenre = 'career';
+        let availableQuestions = [];
+        let currentQuestion = null;
+        let isRevealed = false;
+        let answeredTotal = 0;
+
+        const genreSel = document.getElementById('genreSel');
+        const cardA = document.getElementById('cardA');
+        const cardB = document.getElementById('cardB');
+        const textA = document.getElementById('textA');
+        const textB = document.getElementById('textB');
+        const fillA = document.getElementById('fillA');
+        const fillB = document.getElementById('fillB');
+        const percentA = document.getElementById('percentA');
+        const percentB = document.getElementById('percentB');
+        const nextBtn = document.getElementById('nextBtn');
+        const answerCount = document.getElementById('answerCount');
+
+        genreSel.addEventListener('change', (e) => {
+            currentGenre = e.target.value;
+            shuffleQuestions();
+            loadQuestion();
+        });
+
+        function shuffleQuestions() {
+            // Copy the array to avoid modifying the original database
+            availableQuestions = [...db[currentGenre]];
+            // Shuffle them
+            for (let i = availableQuestions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [availableQuestions[i], availableQuestions[j]] = [availableQuestions[j], availableQuestions[i]];
+            }
+        }
+
+        function loadQuestion() {
+            if (availableQuestions.length === 0) {
+                // If out of questions, reshuffle
+                shuffleQuestions();
+            }
+
+            currentQuestion = availableQuestions.pop();
+            isRevealed = false;
+
+            // Reset UI
+            cardA.className = 'choice-card';
+            cardB.className = 'choice-card';
+            fillA.style.height = '0%';
+            fillB.style.height = '0%';
+            nextBtn.classList.remove('visible');
+
+            // Populate Text
+            textA.innerText = currentQuestion.a;
+            textB.innerText = currentQuestion.b;
+        }
+
+        function makeChoice(choice) {
+            if (isRevealed) return; // Prevent double clicking
+            isRevealed = true;
+            answeredTotal++;
+            answerCount.innerText = answeredTotal;
+
+            // Mark the selected card
+            if (choice === 'A') cardA.classList.add('selected');
+            else cardB.classList.add('selected');
+
+            cardA.classList.add('revealed');
+            cardB.classList.add('revealed');
+
+            // Set Percentages
+            let pA = currentQuestion.pa;
+            let pB = 100 - pA;
+
+            percentA.innerText = `${pA}%`;
+            percentB.innerText = `${pB}%`;
+
+            // Animate the fills
+            // A slight delay makes it feel more dramatic
+            setTimeout(() => {
+                fillA.style.height = `${pA}%`;
+                fillB.style.height = `${pB}%`;
+            }, 100);
+
+            // Show Next Button
+            setTimeout(() => {
+                nextBtn.classList.add('visible');
+            }, 800);
+        }
+
+        // Initialize First Game
+        shuffleQuestions();
+        loadQuestion();
+    </script>
+</body>
+</html>

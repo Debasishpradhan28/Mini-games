@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Versus Card Match</title>
+    <style>
+        :root {
+            --bg-color: #0f0f13;
+            --text-color: #ffffff;
+            --p1-color: #ff4757; /* Red for Player 1 */
+            --p2-color: #1e90ff; /* Blue for Player 2 */
+            --panel-bg: #1e1e24;
+            --card-back: linear-gradient(135deg, #a29bfe, #6c5ce7);
+            --card-front: #2d2d3a;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 15px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        /* --- Header & Settings --- */
+        .top-bar {
+            display: flex; justify-content: center; align-items: center;
+            background: var(--panel-bg); padding: 10px 20px; border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4); gap: 15px; margin-bottom: 20px;
+            z-index: 10;
+        }
+
+        select {
+            background: #2a2a3a; color: white; border: 1px solid #444;
+            padding: 8px 12px; border-radius: 8px; outline: none; cursor: pointer;
+        }
+
+        button.action-btn {
+            background: #2d2d3a; color: white; border: 2px solid #555;
+            padding: 8px 20px; font-weight: bold; border-radius: 8px;
+            cursor: pointer; transition: 0.2s;
+        }
+        button.action-btn:hover { background: #fff; color: #000; }
+
+        /* --- Main Arena Layout --- */
+        .game-arena {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            flex-grow: 1;
+            gap: 20px;
+            justify-content: space-between;
+        }
+
+        /* --- Player Panels --- */
+        .player-panel {
+            width: 200px;
+            background: var(--panel-bg);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow-y: auto;
+        }
+
+        #p1-panel.active { border-color: var(--p1-color); box-shadow: 0 0 30px rgba(255, 71, 87, 0.4); transform: scale(1.02); }
+        #p2-panel.active { border-color: var(--p2-color); box-shadow: 0 0 30px rgba(30, 144, 255, 0.4); transform: scale(1.02); }
+
+        .player-panel h2 { margin: 0 0 10px 0; font-size: 1.5rem; }
+        #p1-panel h2 { color: var(--p1-color); }
+        #p2-panel h2 { color: var(--p2-color); }
+
+        .score { font-size: 3rem; font-weight: bold; margin-bottom: 20px; }
+
+        .collection {
+            display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+            width: 100%;
+        }
+
+        .collected-mini {
+            width: 40px; height: 40px; background: #2d2d3a; border-radius: 6px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.5rem; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0); }
+            100% { transform: scale(1); }
+        }
+
+        /* --- Game Board --- */
+        .board-wrapper {
+            flex-grow: 1; display: flex; justify-content: center; align-items: center;
+        }
+
+        #gameBoard {
+            display: grid; gap: 10px;
+            width: min(100%, calc(100vh - 150px));
+            max-width: 700px; aspect-ratio: 1 / 1; perspective: 1000px;
+        }
+
+        /* --- Card Styling --- */
+        .card {
+            position: relative; width: 100%; height: 100%;
+            cursor: pointer; transform-style: preserve-3d;
+            transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1), opacity 0.5s;
+        }
+
+        .card.flipped { transform: rotateY(180deg); }
+        
+        /* When collected, the card shrinks to 0 and becomes invisible on the board */
+        .card.collected { transform: rotateY(180deg) scale(0); opacity: 0; pointer-events: none; }
+
+        .card-face {
+            position: absolute; width: 100%; height: 100%;
+            backface-visibility: hidden; border-radius: 12px;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .card-back {
+            background: var(--card-back);
+            background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 10px, transparent 10px, transparent 20px);
+            border: 2px solid #a29bfe;
+        }
+        
+        /* Show whose turn it is when hovering over an unflipped card */
+        .p1-turn .card:hover:not(.flipped) .card-back { box-shadow: 0 0 15px var(--p1-color); border-color: var(--p1-color);}
+        .p2-turn .card:hover:not(.flipped) .card-back { box-shadow: 0 0 15px var(--p2-color); border-color: var(--p2-color);}
+
+        .card-front {
+            background: var(--card-front); transform: rotateY(180deg);
+            font-size: clamp(1.5rem, 4vw, 3rem); border: 2px solid #555;
+        }
+        
+        /* Highlight match color based on who got it */
+        .card.matched-p1 .card-front { border-color: var(--p1-color); background: rgba(255, 71, 87, 0.2); }
+        .card.matched-p2 .card-front { border-color: var(--p2-color); background: rgba(30, 144, 255, 0.2); }
+
+        .shake { animation: shake 0.4s; }
+        @keyframes shake {
+            0%, 100% { transform: rotateY(180deg) translateX(0); }
+            25% { transform: rotateY(180deg) translateX(-5px); }
+            50% { transform: rotateY(180deg) translateX(5px); }
+            75% { transform: rotateY(180deg) translateX(-5px); }
+        }
+
+        /* Overlays */
+        #gameOverOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 15, 19, 0.95); display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100; text-align: center;
+        }
+        .go-title { font-size: 4rem; margin-bottom: 20px; text-shadow: 0 0 20px currentColor;}
+        
+        #confetti-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 101; }
+        .confetti { position: absolute; width: 10px; height: 20px; top: -20px; opacity: 0.8; animation: fall linear forwards; }
+        @keyframes fall { 0% { transform: translateY(-20px) rotate(0deg); } 100% { transform: translateY(110vh) rotate(720deg); } }
+
+        /* Mobile Layout */
+        @media (max-width: 800px) {
+            .game-arena { flex-direction: column; }
+            .player-panel { width: 100%; flex-direction: row; justify-content: space-between; padding: 10px; height: 80px;}
+            .score { margin: 0; font-size: 2rem; }
+            .collection { justify-content: flex-end; flex-wrap: nowrap; overflow: hidden; }
+        }
+    </style>
+</head>
+<body class="p1-turn">
+
+    <div id="confetti-container"></div>
+
+    <div class="top-bar">
+        <h2>Versus Match</h2>
+        <select id="diffSel">
+            <option value="easy">Easy (4x4)</option>
+            <option value="medium" selected>Medium (6x4)</option>
+            <option value="hard">Hard (6x6)</option>
+            <option value="master">Master (8x8)</option>
+        </select>
+        <button class="action-btn" id="restartBtn">Restart Game</button>
+    </div>
+
+    <div class="game-arena">
+        <div class="player-panel active" id="p1-panel">
+            <h2>Player 1</h2>
+            <div class="score" id="score1">0</div>
+            <div class="collection" id="collection1"></div>
+        </div>
+
+        <div class="board-wrapper">
+            <div id="gameBoard"></div>
+        </div>
+
+        <div class="player-panel" id="p2-panel">
+            <h2>Player 2</h2>
+            <div class="score" id="score2">0</div>
+            <div class="collection" id="collection2"></div>
+        </div>
+    </div>
+
+    <div id="gameOverOverlay">
+        <div class="go-title" id="winnerTitle">Player 1 Wins!</div>
+        <button class="action-btn" id="playAgainBtn" style="font-size: 1.5rem; padding: 15px 30px; margin-top: 20px;">Play Again</button>
+    </div>
+
+    <script>
+        const config = {
+            easy:   { cols: 4, rows: 4, pairs: 8 },
+            medium: { cols: 6, rows: 4, pairs: 12 },
+            hard:   { cols: 6, rows: 6, pairs: 18 },
+            master: { cols: 8, rows: 8, pairs: 32 }
+        };
+
+        const emojiPool = ['🍎','🍕','🍔','🍟','🌭','🍿','🍩','🍪','🍫','🍬','🍭','🍉','🍇','🍓','🍒','🍍','🥝','🥑','🌽','🥕','🌮','🍣','🍤','🍦','🍧','🎂','🧁','🥧','☕','🍹','🍺','🍷'];
+
+        let currentDiff = config.medium;
+        let cardsArray = [];
+        let firstCard, secondCard;
+        let lockBoard = false;
+        
+        // 2-Player State Variables
+        let currentPlayer = 1;
+        let scores = { 1: 0, 2: 0 };
+        let totalPairsFound = 0;
+
+        const boardEl = document.getElementById('gameBoard');
+        const overlay = document.getElementById('gameOverOverlay');
+        const diffSel = document.getElementById('diffSel');
+
+        diffSel.addEventListener('change', initGame);
+        document.getElementById('restartBtn').addEventListener('click', initGame);
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+            overlay.style.display = 'none';
+            initGame();
+        });
+
+        function initGame() {
+            firstCard = null;
+            secondCard = null;
+            lockBoard = false;
+            
+            currentPlayer = 1;
+            scores = { 1: 0, 2: 0 };
+            totalPairsFound = 0;
+            
+            document.getElementById('score1').innerText = "0";
+            document.getElementById('score2').innerText = "0";
+            document.getElementById('collection1').innerHTML = '';
+            document.getElementById('collection2').innerHTML = '';
+            document.getElementById('confetti-container').innerHTML = '';
+            
+            updateTurnUI();
+            currentDiff = config[diffSel.value];
+            setupBoard();
+        }
+
+        function setupBoard() {
+            boardEl.innerHTML = '';
+            boardEl.style.gridTemplateColumns = `repeat(${currentDiff.cols}, 1fr)`;
+            boardEl.style.gridTemplateRows = `repeat(${currentDiff.rows}, 1fr)`;
+
+            let selectedEmojis = emojiPool.slice(0, currentDiff.pairs);
+            cardsArray = [...selectedEmojis, ...selectedEmojis];
+            
+            for (let i = cardsArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [cardsArray[i], cardsArray[j]] = [cardsArray[j], cardsArray[i]];
+            }
+
+            cardsArray.forEach((emoji) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.icon = emoji;
+                
+                card.innerHTML = `
+                    <div class="card-face card-back"></div>
+                    <div class="card-face card-front">${emoji}</div>
+                `;
+                
+                card.addEventListener('click', flipCard);
+                boardEl.appendChild(card);
+            });
+        }
+
+        function updateTurnUI() {
+            document.body.className = `p${currentPlayer}-turn`;
+            
+            if (currentPlayer === 1) {
+                document.getElementById('p1-panel').classList.add('active');
+                document.getElementById('p2-panel').classList.remove('active');
+            } else {
+                document.getElementById('p2-panel').classList.add('active');
+                document.getElementById('p1-panel').classList.remove('active');
+            }
+        }
+
+        function flipCard() {
+            if (lockBoard) return;
+            if (this === firstCard) return;
+            // Don't allow clicking cards that are already matched and shrinking
+            if (this.classList.contains('collected') || this.classList.contains(`matched-p1`) || this.classList.contains(`matched-p2`)) return;
+
+            this.classList.add('flipped');
+
+            if (!firstCard) {
+                firstCard = this;
+                return;
+            }
+
+            secondCard = this;
+            checkForMatch();
+        }
+
+        function checkForMatch() {
+            let isMatch = firstCard.dataset.icon === secondCard.dataset.icon;
+
+            if (isMatch) {
+                handleMatch();
+            } else {
+                handleMismatch();
+            }
+        }
+
+        function handleMatch() {
+            lockBoard = true;
+            
+            // Highlight the cards with the current player's color
+            firstCard.classList.add(`matched-p${currentPlayer}`);
+            secondCard.classList.add(`matched-p${currentPlayer}`);
+            
+            // Update Score
+            scores[currentPlayer]++;
+            document.getElementById(`score${currentPlayer}`).innerText = scores[currentPlayer];
+            totalPairsFound++;
+
+            // Wait a moment for them to see the match, then pull the cards to their side
+            setTimeout(() => {
+                firstCard.classList.add('collected');
+                secondCard.classList.add('collected');
+                
+                // Add mini icon to their collection panel
+                const mini = document.createElement('div');
+                mini.className = 'collected-mini';
+                mini.innerText = firstCard.dataset.icon;
+                document.getElementById(`collection${currentPlayer}`).appendChild(mini);
+
+                // They got it right, so they DO NOT switch turns.
+                resetBoard();
+
+                if (totalPairsFound === currentDiff.pairs) {
+                    endGame();
+                }
+            }, 800); // Wait 800ms before shrinking the cards
+        }
+
+        function handleMismatch() {
+            lockBoard = true; 
+            
+            firstCard.classList.add('shake');
+            secondCard.classList.add('shake');
+
+            setTimeout(() => {
+                firstCard.classList.remove('flipped', 'shake');
+                secondCard.classList.remove('flipped', 'shake');
+                
+                // Switch Turns ONLY when wrong
+                currentPlayer = currentPlayer === 1 ? 2 : 1;
+                updateTurnUI();
+                
+                resetBoard();
+            }, 1000); 
+        }
+
+        function resetBoard() {
+            [firstCard, secondCard, lockBoard] = [null, null, false];
+        }
+
+        function endGame() {
+            const titleEl = document.getElementById('winnerTitle');
+            let colors = [];
+            
+            if (scores[1] > scores[2]) {
+                titleEl.innerText = "Player 1 Wins!";
+                titleEl.style.color = "var(--p1-color)";
+                colors = ['#ff4757', '#ff6b81', '#ffffff'];
+            } else if (scores[2] > scores[1]) {
+                titleEl.innerText = "Player 2 Wins!";
+                titleEl.style.color = "var(--p2-color)";
+                colors = ['#1e90ff', '#70a1ff', '#ffffff'];
+            } else {
+                titleEl.innerText = "It's a Tie!";
+                titleEl.style.color = "#feca57";
+                colors = ['#ff4757', '#1e90ff', '#feca57']; // Mix of both
+            }
+
+            overlay.style.display = 'flex';
+            triggerCelebration(colors);
+        }
+
+        function triggerCelebration(colors) {
+            const container = document.getElementById('confetti-container');
+            for (let i = 0; i < 200; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = Math.random() * 100 + 'vw';
+                c.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                c.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                c.style.animationDelay = Math.random() * 1 + 's';
+                container.appendChild(c);
+            }
+        }
+
+        initGame();
+    </script>
+</body>
+</html>

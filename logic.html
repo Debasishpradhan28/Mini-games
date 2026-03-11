@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logic Gate Circuitry</title>
+    <style>
+        :root {
+            --bg: #0a0a12;
+            --panel: #161625;
+            --text: #e0e0ff;
+            --neon-blue: #00f3ff;
+            --neon-purple: #bc13fe;
+            --neon-green: #2ed573;
+            --neon-red: #ff4757;
+            --gate-bg: #22223b;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0; padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; box-sizing: border-box; overflow-x: hidden;
+        }
+
+        /* --- Header & UI --- */
+        .header { text-align: center; margin-bottom: 20px; width: 100%; max-width: 800px; }
+        h1 { margin: 0; color: var(--neon-blue); font-size: 2.5rem; text-shadow: 0 0 15px rgba(0, 243, 255, 0.5); text-transform: uppercase; letter-spacing: 2px;}
+        
+        .top-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--panel); padding: 15px 25px; border-radius: 12px;
+            margin-top: 15px; border: 1px solid #333; box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+        }
+
+        select {
+            background: #2a2a3a; color: white; border: 1px solid var(--neon-blue);
+            padding: 8px 12px; border-radius: 6px; outline: none; cursor: pointer;
+        }
+
+        .timer { font-size: 1.5rem; font-weight: bold; color: var(--neon-purple); text-shadow: 0 0 10px rgba(188, 19, 254, 0.5); }
+        .lives { font-size: 1.3rem; letter-spacing: 5px; }
+        .heart.lost { filter: grayscale(100%); opacity: 0.3; }
+
+        button.action-btn {
+            background: transparent; color: var(--neon-green); border: 2px solid var(--neon-green);
+            padding: 10px 20px; font-size: 1.1rem; font-weight: bold; border-radius: 8px;
+            cursor: pointer; transition: 0.2s; box-shadow: 0 0 10px rgba(46, 213, 115, 0.2);
+        }
+        button.action-btn:hover:not(:disabled) { background: var(--neon-green); color: #000; box-shadow: 0 0 20px rgba(46, 213, 115, 0.6); }
+        button.action-btn:disabled { border-color: #555; color: #555; cursor: not-allowed; box-shadow: none; }
+
+        /* --- Circuit Grid --- */
+        #circuitBoard {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 30px;
+            width: 100%; max-width: 900px; padding: 20px;
+        }
+
+        .logic-module {
+            background: var(--panel); border: 2px solid #333; border-radius: 12px;
+            padding: 20px; display: flex; align-items: center; gap: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative;
+            transition: border-color 0.3s;
+        }
+        .logic-module.active { border-color: var(--neon-blue); box-shadow: 0 0 20px rgba(0, 243, 255, 0.3); }
+
+        .module-label {
+            position: absolute; top: -12px; left: 15px; background: var(--bg);
+            padding: 0 10px; font-size: 0.8rem; color: #888; border-radius: 10px;
+            border: 1px solid #333;
+        }
+
+        .inputs-col { display: flex; flex-direction: column; gap: 10px; }
+        
+        .val-box {
+            background: #111; border: 1px solid #444; width: 40px; height: 40px;
+            display: flex; justify-content: center; align-items: center;
+            font-weight: bold; font-size: 1.2rem; border-radius: 6px;
+        }
+        .val-box.is-1 { color: var(--neon-green); text-shadow: 0 0 8px var(--neon-green); border-color: rgba(46, 213, 115, 0.4); }
+        .val-box.is-0 { color: var(--neon-red); text-shadow: 0 0 8px var(--neon-red); border-color: rgba(255, 71, 87, 0.4); }
+        .val-box.is-ref { font-size: 0.8rem; color: var(--neon-purple); border-color: var(--neon-purple); width: 60px;}
+
+        .gate-btn {
+            background: var(--gate-bg); color: white; border: 2px solid #555;
+            width: 80px; height: 60px; font-size: 1.2rem; font-weight: bold;
+            border-radius: 10px; cursor: pointer; transition: 0.2s;
+        }
+        .gate-btn:hover { border-color: var(--text); background: #33334d; }
+        .gate-btn[data-gate="?"] { color: #f1c40f; border-color: #f1c40f; border-style: dashed; }
+
+        .output-box {
+            background: #000; border: 2px solid #555; width: 50px; height: 50px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.5rem; font-weight: bold; border-radius: 50%;
+            transition: 0.3s;
+        }
+        
+        .final-bulb { font-size: 3rem; margin-left: 10px; filter: grayscale(100%); transition: 0.3s; }
+        .final-bulb.on { filter: grayscale(0%); text-shadow: 0 0 30px yellow; transform: scale(1.1); }
+
+        /* --- Guide Panel --- */
+        .guide-panel {
+            margin-top: 30px; background: rgba(22, 22, 37, 0.8); padding: 15px;
+            border-radius: 8px; border: 1px solid #333; max-width: 800px;
+            font-size: 0.9rem; color: #aaa; text-align: center; line-height: 1.5;
+        }
+        .guide-panel span { color: var(--text); font-weight: bold; margin: 0 10px; }
+
+        /* Overlays */
+        #gameOverOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 10, 18, 0.95); display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100;
+        }
+        .go-title { font-size: 3.5rem; margin-bottom: 20px; text-transform: uppercase;}
+        
+        #confetti-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 101; }
+        .confetti { position: absolute; width: 10px; height: 20px; top: -20px; opacity: 0.8; animation: fall linear forwards; }
+        @keyframes fall { 0% { transform: translateY(-20px) rotate(0deg); } 100% { transform: translateY(110vh) rotate(720deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="confetti-container"></div>
+
+    <div class="header">
+        <h1>Logic Gate Circuit</h1>
+        <div class="top-bar">
+            <select id="diffSel">
+                <option value="easy">Easy (1 Gate)</option>
+                <option value="medium" selected>Medium (2 Gates)</option>
+                <option value="hard">Hard (3 Gates)</option>
+                <option value="pro">Pro (4 Gates)</option>
+            </select>
+            <div class="timer" id="timerDisplay">00:00</div>
+            <div class="lives" id="livesDisplay">❤️ ❤️ ❤️</div>
+            <button class="action-btn" id="evalBtn">⚡ Test Circuit</button>
+        </div>
+    </div>
+
+    <div id="circuitBoard">
+        </div>
+
+    <div class="guide-panel">
+        <strong>Gate Guide:</strong> 
+        <span>AND:</span> Both inputs must be 1. 
+        <span>OR:</span> At least one input must be 1. 
+        <span>XOR:</span> Inputs must be DIFFERENT.
+        <span>NAND:</span> Inverse of AND. 
+        <span>NOR:</span> Inverse of OR.
+    </div>
+
+    <div id="gameOverOverlay">
+        <div class="go-title" id="goTitle">Circuit Failed</div>
+        <button class="action-btn" id="restartBtn" style="font-size: 1.5rem; padding: 15px 30px;">Initialize New System</button>
+    </div>
+
+    <script>
+        // Circuit Blueprints (How modules connect)
+        // 'rand' = random 0 or 1. 'out:X' = takes output from Module X
+        const levelConfigs = {
+            easy:   [{ id: 0, in1: 'rand', in2: 'rand' }],
+            medium: [
+                { id: 0, in1: 'rand', in2: 'rand' },
+                { id: 1, in1: 'out:0', in2: 'rand' }
+            ],
+            hard: [
+                { id: 0, in1: 'rand', in2: 'rand' },
+                { id: 1, in1: 'rand', in2: 'rand' },
+                { id: 2, in1: 'out:0', in2: 'out:1' }
+            ],
+            pro: [ 
+                { id: 0, in1: 'rand', in2: 'rand' },
+                { id: 1, in1: 'rand', in2: 'rand' },
+                { id: 2, in1: 'out:0', in2: 'rand' },
+                { id: 3, in1: 'out:2', in2: 'out:1' }
+            ]
+        };
+
+        const gatesList = ['AND', 'OR', 'XOR', 'NAND', 'NOR'];
+        const timeLimits = { easy: 45, medium: 60, hard: 90, pro: 120 };
+
+        let currentPuzzle = [];
+        let lives = 3;
+        let timeRemaining = 0;
+        let timerInterval;
+        let isEvaluating = false;
+
+        const boardEl = document.getElementById('circuitBoard');
+        const evalBtn = document.getElementById('evalBtn');
+        const livesDisplay = document.getElementById('livesDisplay');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const overlay = document.getElementById('gameOverOverlay');
+
+        document.getElementById('diffSel').addEventListener('change', initGame);
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            overlay.style.display = 'none';
+            lives = 3;
+            updateLivesDisplay();
+            initGame();
+        });
+        evalBtn.addEventListener('click', evaluateCircuit);
+
+        // --- BOOLEAN MATH ENGINE ---
+        function calcGate(gate, a, b) {
+            switch(gate) {
+                case 'AND': return a & b;
+                case 'OR': return a | b;
+                case 'XOR': return a ^ b;
+                case 'NAND': return !(a & b) ? 1 : 0;
+                case 'NOR': return !(a | b) ? 1 : 0;
+                default: return 0;
+            }
+        }
+
+        // --- PROCEDURAL GENERATION ---
+        function generatePuzzle(diffKey) {
+            const config = levelConfigs[diffKey];
+            let valid = false;
+            let attempt = [];
+
+            // Brute force a solvable puzzle where final output is always 1
+            while (!valid) {
+                attempt = JSON.parse(JSON.stringify(config));
+                let nodeValues = {};
+
+                for (let mod of attempt) {
+                    mod.val1 = mod.in1 === 'rand' ? Math.floor(Math.random() * 2) : nodeValues[mod.in1.split(':')[1]];
+                    mod.val2 = mod.in2 === 'rand' ? Math.floor(Math.random() * 2) : nodeValues[mod.in2.split(':')[1]];
+                    mod.targetGate = gatesList[Math.floor(Math.random() * gatesList.length)];
+                    
+                    let out = calcGate(mod.targetGate, mod.val1, mod.val2);
+                    mod.targetOut = out;
+                    nodeValues[mod.id] = out;
+                }
+
+                // If the very last module outputs 1, the puzzle is solvable!
+                if (nodeValues[attempt[attempt.length - 1].id] === 1) {
+                    valid = true;
+                }
+            }
+            return attempt;
+        }
+
+        // --- RENDERING ---
+        function initGame() {
+            clearInterval(timerInterval);
+            document.getElementById('confetti-container').innerHTML = '';
+            isEvaluating = false;
+            evalBtn.disabled = false;
+            evalBtn.innerText = "⚡ Test Circuit";
+
+            const diffKey = document.getElementById('diffSel').value;
+            currentPuzzle = generatePuzzle(diffKey);
+            
+            timeRemaining = timeLimits[diffKey];
+            startTimer();
+            renderBoard();
+        }
+
+        function renderBoard() {
+            boardEl.innerHTML = '';
+            
+            currentPuzzle.forEach((mod, index) => {
+                const isLast = index === currentPuzzle.length - 1;
+                
+                // Format input visuals
+                let in1HTML = mod.in1 === 'rand' 
+                    ? `<div class="val-box is-${mod.val1}">${mod.val1}</div>` 
+                    : `<div class="val-box is-ref">MOD ${parseInt(mod.in1.split(':')[1]) + 1}</div>`;
+                
+                let in2HTML = mod.in2 === 'rand' 
+                    ? `<div class="val-box is-${mod.val2}">${mod.val2}</div>` 
+                    : `<div class="val-box is-ref">MOD ${parseInt(mod.in2.split(':')[1]) + 1}</div>`;
+
+                let bulbHTML = isLast ? `<div class="final-bulb" id="finalBulb">💡</div>` : '';
+
+                const modDiv = document.createElement('div');
+                modDiv.className = 'logic-module';
+                modDiv.id = `module-${mod.id}`;
+                modDiv.innerHTML = `
+                    <div class="module-label">MOD ${mod.id + 1}</div>
+                    <div class="inputs-col">
+                        ${in1HTML}
+                        ${in2HTML}
+                    </div>
+                    <button class="gate-btn" id="gateBtn-${mod.id}" data-gate="?" onclick="cycleGate(${mod.id})">?</button>
+                    <div class="output-box" id="outBox-${mod.id}">?</div>
+                    ${bulbHTML}
+                `;
+                boardEl.appendChild(modDiv);
+            });
+        }
+
+        // --- INTERACTION ---
+        window.cycleGate = function(modId) {
+            if(isEvaluating) return;
+            const btn = document.getElementById(`gateBtn-${modId}`);
+            let current = btn.getAttribute('data-gate');
+            let nextIdx = current === '?' ? 0 : (gatesList.indexOf(current) + 1) % gatesList.length;
+            
+            btn.setAttribute('data-gate', gatesList[nextIdx]);
+            btn.innerText = gatesList[nextIdx];
+            btn.style.borderColor = varColor(gatesList[nextIdx]);
+        };
+
+        function varColor(gate) {
+            if(['AND','OR'].includes(gate)) return '#00f3ff';
+            if(['NAND','NOR'].includes(gate)) return '#bc13fe';
+            if(gate === 'XOR') return '#f1c40f';
+            return '#555';
+        }
+
+        // --- ASYNC EVALUATION ANIMATION ---
+        async function evaluateCircuit() {
+            // Validate all gates filled
+            for (let mod of currentPuzzle) {
+                if (document.getElementById(`gateBtn-${mod.id}`).getAttribute('data-gate') === '?') {
+                    alert("⚠️ You must assign a logic gate to every module!");
+                    return;
+                }
+            }
+
+            isEvaluating = true;
+            evalBtn.disabled = true;
+            evalBtn.innerText = "Processing...";
+
+            let runtimeValues = {};
+
+            // Calculate step-by-step
+            for (let i = 0; i < currentPuzzle.length; i++) {
+                let mod = currentPuzzle[i];
+                let modDiv = document.getElementById(`module-${mod.id}`);
+                
+                // Highlight module being processed
+                modDiv.classList.add('active');
+                await sleep(500); // 500ms delay for visual flow
+
+                let v1 = mod.in1 === 'rand' ? mod.val1 : runtimeValues[mod.in1.split(':')[1]];
+                let v2 = mod.in2 === 'rand' ? mod.val2 : runtimeValues[mod.in2.split(':')[1]];
+                let selectedGate = document.getElementById(`gateBtn-${mod.id}`).getAttribute('data-gate');
+
+                let result = calcGate(selectedGate, v1, v2);
+                runtimeValues[mod.id] = result;
+
+                // Update Output Box
+                let outBox = document.getElementById(`outBox-${mod.id}`);
+                outBox.innerText = result;
+                outBox.style.color = result === 1 ? '#2ed573' : '#ff4757';
+                outBox.style.borderColor = result === 1 ? '#2ed573' : '#ff4757';
+                
+                modDiv.classList.remove('active');
+                await sleep(200);
+            }
+
+            // Final Result Check
+            let finalResult = runtimeValues[currentPuzzle[currentPuzzle.length - 1].id];
+            
+            if (finalResult === 1) {
+                document.getElementById('finalBulb').classList.add('on');
+                clearInterval(timerInterval);
+                setTimeout(() => triggerGameOver("CIRCUIT COMPLETE", "#2ed573", true), 500);
+            } else {
+                lives--;
+                updateLivesDisplay();
+                if (lives <= 0) {
+                    setTimeout(() => triggerGameOver("SYSTEM FAILURE", "#ff4757", false), 500);
+                } else {
+                    // Reset UI to let them try again
+                    setTimeout(() => {
+                        currentPuzzle.forEach(mod => {
+                            let ob = document.getElementById(`outBox-${mod.id}`);
+                            ob.innerText = '?'; ob.style.color = '#fff'; ob.style.borderColor = '#555';
+                        });
+                        isEvaluating = false;
+                        evalBtn.disabled = false;
+                        evalBtn.innerText = "⚡ Test Circuit";
+                    }, 1000);
+                }
+            }
+        }
+
+        // --- UTILS ---
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+        function startTimer() {
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                if(!isEvaluating) timeRemaining--; // Pause timer during evaluation animation
+                updateTimerDisplay();
+                if (timeRemaining <= 0) {
+                    lives = 0; updateLivesDisplay();
+                    triggerGameOver("TIME OUT", "#ff4757", false);
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            let m = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
+            let s = (timeRemaining % 60).toString().padStart(2, '0');
+            timerDisplay.innerText = `${m}:${s}`;
+        }
+
+        function updateLivesDisplay() {
+            let h = '';
+            for(let i=0; i<3; i++) h += i < lives ? '❤️ ' : '<span class="heart lost">🖤</span> ';
+            livesDisplay.innerHTML = h;
+        }
+
+        function triggerGameOver(msg, color, win) {
+            clearInterval(timerInterval);
+            isEvaluating = true;
+            document.getElementById('goTitle').innerText = msg;
+            document.getElementById('goTitle').style.color = color;
+            overlay.style.display = 'flex';
+            if(win) triggerCelebration();
+        }
+
+        function triggerCelebration() {
+            const colors = ['#00f3ff', '#bc13fe', '#2ed573', '#f1c40f']; 
+            const container = document.getElementById('confetti-container');
+            for (let i = 0; i < 150; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = Math.random() * 100 + 'vw';
+                c.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                c.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                c.style.animationDelay = Math.random() * 1 + 's';
+                container.appendChild(c);
+            }
+        }
+
+        // Start initial game
+        initGame();
+    </script>
+</body>
+</html>
